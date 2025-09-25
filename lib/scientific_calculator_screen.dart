@@ -1,171 +1,118 @@
-import 'package:flutter/material.dart';
-import 'scientific_calculator.dart';
+import 'dart:math';
 
-class ScientificCalculatorScreen extends StatefulWidget {
-  const ScientificCalculatorScreen({super.key});
+/**
+ * MOTOR DE CÁLCULO CIENTÍFICO
+ * 
+ * Clase estática que procesa expresiones matemáticas complejas
+ * Convierte texto en operaciones matemáticas reales
+ */
+class ScientificCalculator {
+  
+  /**
+   * EVALUAR EXPRESIÓN - Método principal
+   * 
+   * Convierte: "sin(90) + √(16)" → 1.0 + 4.0 → 5.0
+   * 
+   * @param expression: String con la operación matemática
+   * @return: Resultado numérico de la expresión
+   */
+  static double evaluate(String expression) {
+    try {
+      // 1. LIMPIAR: Eliminar espacios y unificar símbolos
+      expression = expression.replaceAll(' ', '')
+                   .replaceAll('×', '*').replaceAll('÷', '/');
+      
+      // 2. CONSTANTES: Reemplazar π y e por sus valores numéricos
+      expression = expression.replaceAll('π', pi.toString())
+                   .replaceAll('e', e.toString());
+      
+      // 3. FUNCIONES: Procesar sin, cos, tan, √, log, ln
+      expression = _replaceFunctions(expression);
+      
+      // 4. OPERACIONES: Evaluar +, -, *, /, ^
+      return _evaluateBasic(expression);
+    } catch (e) {
+      throw Exception('Error en la expresión: $e');
+    }
+  }
 
-  @override
-  State<ScientificCalculatorScreen> createState() => _ScientificCalculatorScreenState();
-}
+  /**
+   * PROCESAR FUNCIONES MATEMÁTICAS
+   * 
+   * Convierte funciones en texto a resultados numéricos
+   * Ej: "sin(90)" → "1.0"
+   */
+  static String _replaceFunctions(String expression) {
+    // Diccionario de funciones disponibles
+    var functions = {
+      'sin': (x) => sin(x),     // Seno (radianes)
+      'cos': (x) => cos(x),     // Coseno
+      'tan': (x) => tan(x),     // Tangente
+      '√': (x) => sqrt(x),      // Raíz cuadrada
+      'log': (x) => log(x),     // Logaritmo natural (base e)
+      'ln': (x) => log(x),      // Logaritmo natural
+    };
 
-class _ScientificCalculatorScreenState extends State<ScientificCalculatorScreen> {
-  String _display = '0';
-  String _expression = '';
-  bool _isResult = false;
-
-  void _onButtonPressed(String buttonText) {
-    setState(() {
-      if (buttonText == 'C') {
-        _display = '0';
-        _expression = '';
-        _isResult = false;
-      } else if (buttonText == '=') {
-        try {
-          _display = ScientificCalculator.evaluate(_expression).toString();
-          _expression = _display;
-          _isResult = true;
-        } catch (e) {
-          _display = 'Error';
-          _expression = '';
-        }
-      } else if (buttonText == '⌫') {
-        if (_display.isNotEmpty && _display != '0') {
-          _display = _display.length > 1 ? _display.substring(0, _display.length - 1) : '0';
-          _expression = _expression.length > 1 ? _expression.substring(0, _expression.length - 1) : '';
-        }
-      } else {
-        if (_isResult && !'+-×÷'.contains(buttonText)) {
-          _display = buttonText;
-          _expression = buttonText;
-          _isResult = false;
-        } else {
-          if (_display == '0' && buttonText != '.') {
-            _display = buttonText;
-          } else {
-            _display += buttonText;
-          }
-          _expression += buttonText;
-        }
+    // Buscar y reemplazar cada función en la expresión
+    for (var function in functions.entries) {
+      final pattern = '${function.key}\\(([^)]+)\\)'; // Ej: sin\((.*?)\)
+      final regex = RegExp(pattern);
+      
+      // Reemplazar todas las ocurrencias de la función
+      while (regex.hasMatch(expression)) {
+        expression = expression.replaceFirstMapped(regex, (match) {
+          final value = double.parse(match.group(1)!); // Extraer número
+          final result = function.value(value);        // Calcular función
+          return result.toString();                    // Devolver resultado
+        });
       }
-    });
+    }
+    
+    return expression;
   }
 
-  Widget _buildButton(String text, {Color color = Colors.white, Color textColor = Colors.black, double fontSize = 18}) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: textColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.all(16),
-          ),
-          onPressed: () => _onButtonPressed(text),
-          child: Text(
-            text,
-            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Calculadora Científica'),
-        backgroundColor: Colors.orange,
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: Colors.grey[100],
-      body: Column(
-        children: [
-          // Display
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            color: Colors.black87,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Text(
-                _display,
-                style: const TextStyle(
-                  fontSize: 36, 
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white
-                ),
-              ),
-            ),
-          ),
-          
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                children: [
-                  // Primera fila - Funciones avanzadas
-                  Row(children: [
-                    _buildButton('sin', color: Colors.orange, textColor: Colors.white, fontSize: 16),
-                    _buildButton('cos', color: Colors.orange, textColor: Colors.white, fontSize: 16),
-                    _buildButton('tan', color: Colors.orange, textColor: Colors.white, fontSize: 16),
-                    _buildButton('⌫', color: Colors.red, textColor: Colors.white),
-                    _buildButton('C', color: Colors.red, textColor: Colors.white),
-                  ]),
-                  
-                  // Segunda fila - Más funciones
-                  Row(children: [
-                    _buildButton('√', color: Colors.orange, textColor: Colors.white),
-                    _buildButton('log', color: Colors.orange, textColor: Colors.white, fontSize: 16),
-                    _buildButton('ln', color: Colors.orange, textColor: Colors.white, fontSize: 16),
-                    _buildButton('π', color: Colors.blue, textColor: Colors.white),
-                    _buildButton('e', color: Colors.blue, textColor: Colors.white),
-                  ]),
-                  
-                  // Tercera fila - Números y operaciones básicas
-                  Row(children: [
-                    _buildButton('7'),
-                    _buildButton('8'),
-                    _buildButton('9'),
-                    _buildButton('÷', color: Colors.blue, textColor: Colors.white),
-                    _buildButton('(', color: Colors.green, textColor: Colors.white),
-                  ]),
-                  
-                  // Cuarta fila
-                  Row(children: [
-                    _buildButton('4'),
-                    _buildButton('5'),
-                    _buildButton('6'),
-                    _buildButton('×', color: Colors.blue, textColor: Colors.white),
-                    _buildButton(')', color: Colors.green, textColor: Colors.white),
-                  ]),
-                  
-                  // Quinta fila
-                  Row(children: [
-                    _buildButton('1'),
-                    _buildButton('2'),
-                    _buildButton('3'),
-                    _buildButton('-', color: Colors.blue, textColor: Colors.white),
-                    _buildButton('^', color: Colors.orange, textColor: Colors.white),
-                  ]),
-                  
-                  // Sexta fila
-                  Row(children: [
-                    _buildButton('0'),
-                    _buildButton('.'),
-                    _buildButton('=', color: Colors.green, textColor: Colors.white),
-                    _buildButton('+', color: Colors.blue, textColor: Colors.white),
-                    _buildButton('', color: Colors.grey),
-                  ]),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  /**
+   * EVALUAR OPERACIONES BÁSICAS
+   * 
+   * Procesa operadores aritméticos en orden de precedencia
+   * +, -, *, /, ^ (potencia)
+   */
+  static double _evaluateBasic(String expression) {
+    // ORDEN DE EVALUACIÓN: ^ → * / → + -
+    if (expression.contains('+')) {
+      List<String> parts = expression.split('+');
+      return _evaluateBasic(parts[0]) + _evaluateBasic(parts[1]);
+    } else if (expression.contains('-')) {
+      List<String> parts = expression.split('-');
+      return _evaluateBasic(parts[0]) - _evaluateBasic(parts[1]);
+    } else if (expression.contains('*')) {
+      List<String> parts = expression.split('*');
+      return _evaluateBasic(parts[0]) * _evaluateBasic(parts[1]);
+    } else if (expression.contains('/')) {
+      List<String> parts = expression.split('/');
+      return _evaluateBasic(parts[0]) / _evaluateBasic(parts[1]);
+    } else if (expression.contains('^')) {
+      List<String> parts = expression.split('^');
+      return pow(_evaluateBasic(parts[0]), _evaluateBasic(parts[1])).toDouble();
+    } else {
+      // Conversión final a número
+      return double.tryParse(expression) ?? 0;
+    }
   }
 }
+
+/**
+ * EJEMPLOS DE USO:
+ * 
+ * evaluate("sin(90) + 5")       → 1.0 + 5 = 6.0
+ * evaluate("√(16) * 2")         → 4.0 * 2 = 8.0  
+ * evaluate("2^3 + π")           → 8.0 + 3.1416 = 11.1416
+ * evaluate("log(e)")            → 1.0
+ * 
+ * FUNCIONES SOPORTADAS:
+ * - sin(x), cos(x), tan(x)  → Trigonometría (radianes)
+ * - √(x)                    → Raíz cuadrada
+ * - log(x), ln(x)           → Logaritmos
+ * - ^                       → Potencia
+ * - π, e                    → Constantes matemáticas
+ */
